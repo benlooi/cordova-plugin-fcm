@@ -3,12 +3,17 @@
 //  TestApp
 //
 //  Created by felipe on 12/06/16.
-//
+// edited by benlooi on 4th Oct 2016.
 //
 #import "AppDelegate+FCMPlugin.h"
 #import "FCMPlugin.h"
 #import <objc/runtime.h>
 #import <Foundation/Foundation.h>
+#import <UserNotifications/UserNotifications.h>
+#import <FirebaseAnalytics/FIRApp.h>
+#import <FirebaseInstanceID/FIRInstanceID.h>
+#import <FirebaseMessaging/FIRMessaging.h>
+
 
 #import "Firebase.h"
 
@@ -30,21 +35,35 @@ static NSData *lastPush;
 
     NSLog(@"DidFinishLaunchingWithOptions");
     // Register for remote notifications
-
-    // iOS 7.1 or earlier
-    if (floor(NSFoundationVersionNumber) <= NSFoundationVersionNumber_iOS_7_1) {
-        UIRemoteNotificationType allNotificationTypes = (UIRemoteNotificationTypeSound | UIRemoteNotificationTypeAlert | UIRemoteNotificationTypeBadge);
-        [application registerForRemoteNotificationTypes:allNotificationTypes];
-    } else {
-        // iOS 8 or later
+    if (floor(NSFoundationVersionNumber) <= NSFoundationVersionNumber_iOS_9_x_Max) {
         UIUserNotificationType allNotificationTypes =
         (UIUserNotificationTypeSound | UIUserNotificationTypeAlert | UIUserNotificationTypeBadge);
         UIUserNotificationSettings *settings =
         [UIUserNotificationSettings settingsForTypes:allNotificationTypes categories:nil];
         [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
-        [[UIApplication sharedApplication] registerForRemoteNotifications];
+    } else {
+        // iOS 10 or later
+#if defined(__IPHONE_10_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_10_0
+        UNAuthorizationOptions authOptions =
+        UNAuthorizationOptionAlert
+        | UNAuthorizationOptionSound
+        | UNAuthorizationOptionBadge;
+        [[UNUserNotificationCenter currentNotificationCenter]
+         requestAuthorizationWithOptions:authOptions
+         completionHandler:^(BOOL granted, NSError * _Nullable error) {
+         }
+         ];
+        
+        // For iOS 10 display notification (sent via APNS)
+        [[UNUserNotificationCenter currentNotificationCenter] setDelegate:self];
+        // For iOS 10 data message (sent via FCM)
+        [[FIRMessaging messaging] setRemoteMessageDelegate:self];
+#endif
     }
+    
+    [[UIApplication sharedApplication] registerForRemoteNotifications];
 
+    
     // [START configure_firebase]
     [FIRApp configure];
     // [END configure_firebase]
